@@ -1,0 +1,382 @@
+---
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+# **Title: Airfoil Self Noise Progress Report for MAT565**
+
+# date: 11/4/21
+
+# author: Gabrielle Giacoppe
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+```
+
+## R Markdown
+
+## Introduction AirfoilSelfNoise Dataset
+
+An introduction to which motivates this data-set is there are various wind tunnel speeds and angles of attack of which an airfoil has; an airfoil is the cross-sectional shape of an object whose motion through a gas is capable of generating significant lift, such as a wing. The series of aerodynamic and acoustic tests of two and three-dimensional airfoil blade sections conducted in an anechoic wind tunnels can help developers understand and make comparison between different types of airfoils relative to their sound.
+
+This dataset was retrieved from KAGGLE under the url: <https://www.kaggle.com/fedesoriano/airfoil-selfnoise-dataset>. However its primary source of the data was obtained from UCI Machine Learning Repository: <https://archive.ics.uci.edu/ml/datasets/airfoil+self-noise>
+
+While reading relating information, the focus of the data while it was conducted was the span of the airfoil and the observer position, ensuring that the position was the same in all of the experiments.
+
+## Relevant Literature
+
+Relevant Literature Reviews that are acknolwedged are listed: T.F. Brooks, D.S. Pope, and A.M. Marcolini. Airfoil self-noise and prediction. Technical report, NASA RP-1218, July 1989.
+
+K. Lau. A neural networks approach for aerofoil noise prediction. Masterâ€™s thesis, Department of Aeronautics. Imperial College of Science, Technology and Medicine (London, United Kingdom), 2006.
+
+R. Lopez. Neural Networks for Variational Problems in Engineering. PhD Thesis, Technical University of Catalonia, 2008.
+
+```{r airfoil}
+AirfoilSelfNoise<-read.csv("AirfoilSelfNoise.csv",header=TRUE)
+#View(AirfoilSelfNoise)
+
+```
+
+```{r}
+#str(AirfoilSelfNoise)
+
+```
+
+```{r}
+#View(AirfoilSelfNoise)
+```
+
+Background on what the variable names mean: f: Frequency in Hertzs [Hz]. alpha: Angle of attack (AoA, α), in degrees [°]. c: Chord length, in meters [m]. U_infinity: Free-stream velocity, in meters per second [m/s]. delta: Suction side displacement thickness (𝛿), in meters [m].
+
+Variable desired to be y is
+
+SSPL: Scaled sound pressure level, in decibels [dB].
+
+Variables Information: 1.f 2. alpha 3. c 4. U_infinity 5. delta 6. SSPL
+
+There are no categorical variables identified, so there is no need to make corresponding boxplots.
+
+```{r Pairs}
+panel.hist<-function(x,...){usr<-par("usr"); on.exit(par(usr)); 
+    par(usr=c(usr[1:2], 0, 1.5)); 
+      h<-hist(x, plot = FALSE); 
+      breaks <-h$breaks; nB <-length(breaks); 
+      y<-h$counts; y <-y/max(y); 
+      rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+  } 
+panel.cor <- function(x,y,digits=2,prefix="",cex.cor, ...) {
+  usr <-par("usr"); on.exit(par(usr));par(usr = c(0, 1, 0, 1)); 
+  r <-abs(cor(x, y,use="complete.obs")); 
+  txt <-format(c(r, 0.123456789), digits = digits)[1]; 
+  txt <-paste0(prefix, txt);
+  if(missing(cex.cor)) 
+    cex.cor <- 0.8/strwidth(txt); 
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+pairs(AirfoilSelfNoise,panel=panel.smooth,diag.panel=panel.hist,lower.panel=panel.cor)
+```
+
+Creating Models (and mod1-5 are the models getting dropped one by one to see if there is a best model. )
+
+```{r}
+mod0<-lm(SSPL ~ f + alpha + c + U_infinity + delta ,data=AirfoilSelfNoise)
+summary(mod0)
+```
+
+```{r}
+mod1<-lm(SSPL ~ alpha  + U_infinity + c + delta ,data=AirfoilSelfNoise)
+summary(mod1)
+
+
+```
+
+```{r}
+mod2<-lm(SSPL ~ f + U_infinity + c + delta ,data=AirfoilSelfNoise)
+summary(mod2)
+```
+
+```{r}
+mod3<-lm(SSPL ~ f + alpha + c + delta ,data=AirfoilSelfNoise)
+summary(mod3)
+```
+
+```{r}
+mod4<-lm(SSPL ~ f + alpha + U_infinity + delta ,data=AirfoilSelfNoise)
+summary(mod4)
+```
+
+```{r}
+mod5<-lm(SSPL ~ f + alpha + c + U_infinity,data=AirfoilSelfNoise)
+summary(mod5)
+```
+
+##Conclusion to dropping variables: While dropping each variable in the one by one technique, one can tell that all of the variables are significant.
+
+##Interaction terms: Goal is to develop a model that includes interaction terms and check if any of these interaction terms with chord length c contribute to the model.(model and summary):
+
+```{r}
+
+model_interac<-lm(SSPL ~ f*c+alpha*c+U_infinity*c+delta*c,data=AirfoilSelfNoise)
+summary(model_interac)
+
+```
+
+## Transformations - Do your variables need to be transformed? Should you transform the predictor variable(s)? Should you transform the response variable?
+
+## Transformation of the response variables into a polynomial: 
+
+```{r}
+mod_p<-lm(AirfoilSelfNoise$SSPL ~ poly(f,5,raw=TRUE) + poly(alpha,5,raw=TRUE) + poly(c,5,raw=TRUE) + poly(U_infinity,5,raw=TRUE) + poly(delta,5,raw=TRUE) ,data=AirfoilSelfNoise)
+summary(mod_p)
+```
+
+## Polynomial with interaction term c.
+
+```{r}
+mod_p_interac<-lm(AirfoilSelfNoise$SSPL ~ poly(f*c,3,raw=TRUE) + poly(alpha*c,3,raw=TRUE)  + poly(U_infinity*c,3,raw=TRUE) + poly(delta*c,3,raw=TRUE) ,data=AirfoilSelfNoise)
+summary(mod_p_interac)
+
+```
+
+## Logrithims
+
+```{r}
+mod_log<-lm(log(SSPL) ~ poly(f,5,raw=TRUE) + poly(alpha,5,raw=TRUE) + poly(c,5,raw=TRUE) + poly(U_infinity,5,raw=TRUE) + poly(delta,5,raw=TRUE) ,data=AirfoilSelfNoise)
+summary(mod_log)
+```
+
+Log with interaction c: Chord Length.
+
+```{r}
+modp_log<-lm(log(SSPL) ~ poly(f*c,5,raw=TRUE) + poly(alpha*c,5,raw=TRUE)  + poly(U_infinity*c,5,raw=TRUE) + poly(delta*c,5,raw=TRUE) ,data=AirfoilSelfNoise)
+summary(modp_log)
+```
+
+##Is normality satisfied? Run the appropriate test
+
+```{r}
+shapiro.test(modp_log$residuals)
+```
+
+The p-value is so small at the significance level less than 0.01, meaning we reject the null, and go with alternative hypothesis H1. Hence, it does not come from normal dist.
+
+Is constant variance satisfied?
+
+```{r}
+#library(lmtest)
+#bptest(modp_log)
+```
+
+#Outliers
+```{r}
+par(mfrow=c(2,2))
+cook <- cooks.distance(modp_log)
+plot(cook, ylab = "Cooks distances")
+plot(modp_log,4) #Cook's distance
+plot(modp_log,5) #Residuals vs Leverage
+plot(modp_log,6) #Cook's dist vs Leverage
+```
+## Influence PLOT
+```{r}
+library(car)
+# Influence Plot
+influencePlot(modp_log, main="Influence Plot",
+sub="Circle size is proportial to Cook's Distance" )
+```
+
+##CROSS VALIDATION
+```{r}
+
+```
+
+
+
+
+
+##STEP3: prepare standarized variables to be able to separate polynomial terms when we consider a full model with interaction terms and polynomial terms:
+```{r}
+
+
+
+
+fst<-(AirfoilSelfNoise$f-mean(AirfoilSelfNoise$f))/sd(AirfoilSelfNoise$f)
+alphast<-(AirfoilSelfNoise$alpha-mean(AirfoilSelfNoise$alpha))/sd(AirfoilSelfNoise$alpha)
+cst<-(AirfoilSelfNoise$c-mean(AirfoilSelfNoise$c))/sd(AirfoilSelfNoise$c)
+U_infinityst<-(AirfoilSelfNoise$U_infinity-mean(AirfoilSelfNoise$U_infinity))/sd(AirfoilSelfNoise$U_infinity)
+deltast<-(AirfoilSelfNoise$delta-mean(AirfoilSelfNoise$delta))/sd(AirfoilSelfNoise$delta)
+
+AirfoilSelfNoise$f<-AirfoilSelfNoise$f
+AirfoilSelfNoise$alphast<-alphast
+AirfoilSelfNoise$cst<- cst
+AirfoilSelfNoise$U_infinityst<-U_infinityst
+AirfoilSelfNoise$deltast<-deltast
+
+names(AirfoilSelfNoise)
+
+```
+
+STEP4: set up Cross Validation
+```{r}
+n<-length(AirfoilSelfNoise$Y)
+cvindex<-sample(1:n,.12*n,replace=FALSE)
+cvindex<-c(180,157,160,51,4,353,285,315,376,281,89,308,35,209,168,59,203,214,288,119,300,142,387,
+220,116,65,127,64,122,289,133,314,117,68,202,153,241,336,244,354,44,170,221,124,12,123,232,
+118,231,307,362,298,23,103,323,62,291,338,264,330,113,293,320,304,137,30,375,212,1,337,326,
+242,152,325,229,92,149,140,265,167,216,28,29,273,138,382,5,39,16,215,99,47,147,162,85,79,158,
+148,256,328,267,218,301,335,41,280,87,321,380,182,102,111,91,84,332,266,249,352,235,250,58,
+318,334,201,208,13,154,368,106,191,95,81,156,363,294,211,377,15,246,364,370,350,6,392,262,70,
+254,349,226,339,310,389,69,179,105,115,50,379,66,57,174,343,101,163,348,274,200,303,312,384,
+31,263,316,277,80,186,245,60,120,82,299,302,164,199,49,76,100,359,146,40,327,61,329,183,90,
+213,251,372,184,19,134,83,391,287,9,128,371,34,20,188,114,306,347,340,351,257,197,37,56,286,
+135,175,295,283,17,136,331,150,204,130,313,74,292,333,45,52,233,247,78,276,305,222,388,26,132,
+193,110,206,198,272,32,366,97,86,378,361,108,139,24,278,275,166,96,192,271,217,365,317,67,159,
+143,284,253,75,55,14,237,161,234,176,42,252,185,172,309,345,126,7,129,98,258,36,21,11,225,224,
+367,73,207,269,374,77,3,360,38,22,181,355,178,322,259,18,187)
+
+
+
+train<-AirfoilSelfNoise[cvindex,]
+test<-AirfoilSelfNoise[-cvindex,]
+
+```
+
+
+## I tried to find how to train  test with random seed but could not find a possible working output. Discard this chunk of code.
+```{r}
+#set.seed(100)
+#n<-length(AirfoilSelfNoise$Y)
+## 80% of the sample size
+#n_size <- floor(0.80 * nrow(AirfoilSelfNoise))
+#cvindex <- sample(nrow(AirfoilSelfNoise), size = n_size)
+#cvindex<-sample(1:n,.12*n,replace=FALSE)
+#train<-AirfoilSelfNoise[cvindex,]
+#test<-AirfoilSelfNoise[-cvindex,]
+```
+
+
+
+
+
+STEP5: set up full and null models with log(mpg)
+```{r}
+
+full.modlog<-lm(log(SSPL) ~ deltast + I(deltast^2) + I(deltast^3)   
++ alphast +  I(alphast^2) +  I(alphast^3)  + cst + I(cst^2) + I(cst^3) + U_infinityst +  I(U_infinityst^2) +  I(U_infinityst^3)+ f , data=train)
+fullMSE<-summary(full.modlog)$sig^2      # needed to compute Cp
+```
+
+
+```{r}
+null.mod<-lm(log(SSPL)~1,data=train)
+```
+
+
+
+```{r}
+backsel<-step(full.modlog)
+```
+
+```{r}
+bothsel<-step(full.modlog,direction="both")
+```
+
+
+```{r}
+anova(backsel,bothsel)
+
+```
+
+
+
+```{r}
+library(leaps)
+source("/cloud/project/RCODEFORAIRFOIL/LAB9A_ModelSelection_GroupA5.R")
+
+```
+
+```{r}
+lp2<-regsubsets(log(SSPL)~deltast + I(deltast^2) + I(deltast^3)+ alphast +  I(alphast^2) +  I(alphast^3) + U_infinityst+I(U_infinityst^2) + I(U_infinityst^3)+ f , nbest=3,data=train,really.big=T,nvmax=12)
+
+
+lp2matrix<-matrix.selection(lp2,Xnames=lp2$xnames[-1],Yname='log(SSPL)',fullMSE,train)
+
+xp<-length(lp2$xnames) -1 #contains intercept
+size<-apply((summary(lp2)$which*1),1,sum)     #size=p+1
+ibestbic<-which(summary(lp2)$bic== min(summary(lp2)$bic)) 
+ibestadjr2<-which(summary(lp2)$adjr2==max(summary(lp2)$adjr2))
+ibestcp<- which(abs(lp2matrix$Cp - size) == min(abs(lp2matrix$Cp - size )))
+ibestaic<-which(lp2matrix$AIC==min(lp2matrix$AIC))
+
+
+```
+
+
+```{r}
+#Best subsets model for BIC: 
+
+
+
+foo <- summary(lp2)$which[ibestbic, ]
+form <- lp2$xnames[foo][-1]          #remove the intercept
+form <- paste(form, collapse = " + ")
+form <- paste("log(SSPL)~", form)
+bicmod<- lm( as.formula(form), data=train)
+
+#Now repat for the others:
+
+#Best subsets model for AIC:
+
+
+foo <- summary(lp2)$which[ibestaic, ]
+form <- lp2$xnames[foo][-1] 
+form <- paste(form, collapse = " + ")
+form <- paste("log(SSPL)~", form)
+aicmod<- lm( as.formula(form),data=train)
+
+
+#Best subsets model for adjr2
+foo <-  summary(lp2)$which[ibestadjr2, ]
+form <- lp2$xnames[foo][-1] 
+form <- paste(form, collapse = " + ")
+form <-paste("log(SSPL)~", form)
+adjr2mod<- lm(as.formula(form),data=train)
+
+
+
+#Best subsets model for Cp:
+foo <- summary(lp2)$which[ibestcp, ]
+form <- lp2$xnames[foo][-1] 
+form <- paste(form, collapse = " + ")
+form <- paste("log(SSPL)~", form)
+cpmod<- lm(as.formula(form),data=train)
+
+
+#And then compare all models:
+
+#backsel, bicmod, aicmod, adjr2mod, cpmod
+
+```
+
+
+```{r}
+source("/cloud/project/RCODEFORAIRFOIL/LAB9A_ModelSelection_GroupA5.R")
+rbind(bsel=Criteria(backsel,fullMSE,label=T), bicm=Criteria(bicmod,fullMSE,label=T), 
+      aicm=Criteria(aicmod,fullMSE),
+      adjr2m=Criteria(adjr2mod,fullMSE),
+      cpm=Criteria(cpmod,fullMSE))
+```
+
+
+## Assumptions
+
+Looking at various diagnostics to see if the assumptions of the model we selected under kiss are met. In particular, can check for normality and constant variance violations.
+
+```{r}
+#plot(mod0)#put the original model inside
+#This was compared to the plots:
+plot(modp_log)
+```
